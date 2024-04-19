@@ -152,8 +152,8 @@ class MapTRv2Head(DETRHead):
 
         self.bbox_coder = build_bbox_coder(bbox_coder)
         self.pc_range = self.bbox_coder.pc_range
-        self.real_w = self.pc_range[3] - self.pc_range[0]
-        self.real_h = self.pc_range[4] - self.pc_range[1]
+        self.real_w = self.pc_range[3] - self.pc_range[0]    # 30   bev-grid 100
+        self.real_h = self.pc_range[4] - self.pc_range[1]    # 60   bev-grid 200
         self.num_cls_fcs = num_cls_fcs - 1
         
 
@@ -388,12 +388,15 @@ class MapTRv2Head(DETRHead):
             # assert reference.shape[-1] == 2
             # tmp[..., 0:2] += reference[..., 0:2]
             # assert reference.shape[-1] == 2
-            tmp += reference
+            tmp += reference    # 在上一次预测reg的基础上加上后面预测的reg
 
             tmp = tmp.sigmoid() # cx,cy,w,h
             # if not self.z_cfg['gt_z_flag']:
             # tmp = tmp[..., 0:2] if not self.z_cfg['gt_z_flag'] else tmp[..., 0:3]
             # TODO: check if using sigmoid
+            # tmp: torch.Size([2, 7000, 2])
+            # outputs_coord: torch.Size([2, 350, 4])
+            # outputs_pts_coord: torch.Size([2, 350, 20, 2])
             outputs_coord, outputs_pts_coord = self.transform_box(tmp,num_vec=num_vec)
 
             outputs_classes_one2one.append(outputs_class[:, 0:self.num_vec_one2one])
@@ -404,7 +407,7 @@ class MapTRv2Head(DETRHead):
             outputs_coords_one2many.append(outputs_coord[:, self.num_vec_one2one:])
             outputs_pts_coords_one2many.append(outputs_pts_coord[:, self.num_vec_one2one:])
 
-        outputs_classes_one2one = torch.stack(outputs_classes_one2one)
+        outputs_classes_one2one = torch.stack(outputs_classes_one2one)   # torch.Size([6, 2, 50, 3])
         outputs_coords_one2one = torch.stack(outputs_coords_one2one)
         outputs_pts_coords_one2one = torch.stack(outputs_pts_coords_one2one)
 
@@ -521,7 +524,7 @@ class MapTRv2Head(DETRHead):
                                              gt_bboxes_ignore)
 
         sampling_result = self.sampler.sample(assign_result, bbox_pred,
-                                              gt_bboxes)
+                                              gt_bboxes)   # PseudoSampler
         # pts_sampling_result = self.sampler.sample(assign_result, pts_pred,
         #                                       gt_pts)
 
@@ -786,9 +789,9 @@ class MapTRv2Head(DETRHead):
             f'for gt_bboxes_ignore setting to None.'
         gt_vecs_list = copy.deepcopy(gt_bboxes_list)
         # import pdb;pdb.set_trace()
-        all_cls_scores = preds_dicts['all_cls_scores']
-        all_bbox_preds = preds_dicts['all_bbox_preds']
-        all_pts_preds  = preds_dicts['all_pts_preds']
+        all_cls_scores = preds_dicts['all_cls_scores']    # torch.Size([6, 2, 50, 3])
+        all_bbox_preds = preds_dicts['all_bbox_preds']    # torch.Size([6, 2, 50, 4])
+        all_pts_preds  = preds_dicts['all_pts_preds']     # torch.Size([6, 2, 50, 20, 2])
         enc_cls_scores = preds_dicts['enc_cls_scores']
         enc_bbox_preds = preds_dicts['enc_bbox_preds']
         enc_pts_preds  = preds_dicts['enc_pts_preds']

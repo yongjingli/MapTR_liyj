@@ -105,14 +105,20 @@ class BaseTransform(BaseModule):
         device = trans.device
         if self.frustum == None:
             self.frustum = self.create_frustum(fH,fW,img_metas)
-            self.frustum = self.frustum.to(device)
+            self.frustum = self.frustum.to(device)   # uvZ
             # self.D = self.frustum.shape[0]
         
         # undo post-transformation
-        # B x N x D x H x W x 3
+        # B x N x D x H x W x 3      D为离散的预测深度
         points = self.frustum - post_trans.view(B, N, 1, 1, 1, 3)
+        # points = (
+        #     torch.inverse(post_rots)
+        #     .view(B, N, 1, 1, 1, 3, 3)
+        #     .matmul(points.unsqueeze(-1))
+        # )
+        #
         points = (
-            torch.inverse(post_rots)
+            torch.inverse(post_rots.to("cpu")).cuda()
             .view(B, N, 1, 1, 1, 3, 3)
             .matmul(points.unsqueeze(-1))
         )
@@ -123,14 +129,23 @@ class BaseTransform(BaseModule):
                 points[:, :, :, :, :, 2:3],
             ),
             5,
-        )
-        combine = rots.matmul(torch.inverse(intrins))
+        )  # X,Y,Z
+
+        # combine = rots.matmul(torch.inverse(intrins))
+        combine = rots.matmul(torch.inverse(intrins.to("cpu")).cuda())
         points = combine.view(B, N, 1, 1, 1, 3, 3).matmul(points).squeeze(-1)
         points += trans.view(B, N, 1, 1, 1, 3)
         # ego_to_lidar
         points -= lidar2ego_trans.view(B, 1, 1, 1, 1, 3)
+        # points = (
+        #     torch.inverse(lidar2ego_rots)
+        #     .view(B, 1, 1, 1, 1, 3, 3)
+        #     .matmul(points.unsqueeze(-1))
+        #     .squeeze(-1)
+        # )
+
         points = (
-            torch.inverse(lidar2ego_rots)
+            torch.inverse(lidar2ego_rots.to("cpu")).cuda()
             .view(B, 1, 1, 1, 1, 3, 3)
             .matmul(points.unsqueeze(-1))
             .squeeze(-1)
@@ -279,6 +294,7 @@ class BaseTransform(BaseModule):
         #     img_metas,
         # )
 
+        # geom为liadr坐标系下的点坐标
         geom = self.get_geometry_v1(
             fH,
             fW,
@@ -293,6 +309,8 @@ class BaseTransform(BaseModule):
         )
         mlp_input = self.get_mlp_input(camera2ego, camera_intrinsics, post_rots, post_trans)
         x, depth = self.get_cam_feats(images, mlp_input)
+
+        # x:torch.Size([2, 6, 68, 15, 25, 256])    geom: torch.Size([2, 6, 68, 15, 25, 3])
         x = self.bev_pool(geom, x)
         # import pdb;pdb.set_trace()
         x = x.permute(0,1,3,2).contiguous()
@@ -1175,10 +1193,10 @@ class LSSTransform(BaseTransform):
     def get_mlp_input(self, sensor2ego, intrin, post_rot, post_tran):
         B, N, _, _ = sensor2ego.shape
         mlp_input = torch.stack([
-            intrin[:, :, 0, 0],
-            intrin[:, :, 1, 1],
-            intrin[:, :, 0, 2],
-            intrin[:, :, 1, 2],
+            intrin[:, :, 0, 0],   # fx
+            intrin[:, :, 1, 1],   # fy
+            intrin[:, :, 0, 2],   # cx
+            intrin[:, :, 1, 2],   # cy
             post_rot[:, :, 0, 0],
             post_rot[:, :, 0, 1],
             post_tran[:, :, 0],

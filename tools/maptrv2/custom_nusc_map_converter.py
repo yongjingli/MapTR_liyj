@@ -924,7 +924,10 @@ args = parser.parse_args()
 
 
 if __name__ == '__main__':
-    train_version = f'{args.version}-trainval'
+    if args.version == "v1.0-mini":
+        train_version = args.version
+    else:
+        train_version = f'{args.version}-trainval'
     nuscenes_data_prep(
         root_path=args.root_path,
         can_bus_root_path=args.canbus,
@@ -933,7 +936,11 @@ if __name__ == '__main__':
         dataset_name='NuScenesDataset',
         out_dir=args.out_dir,
         max_sweeps=args.max_sweeps)
-    test_version = f'{args.version}-test'
+
+    if args.version == "v1.0-mini":
+        test_version = args.version
+    else:
+        test_version = f'{args.version}-test'
     nuscenes_data_prep(
         root_path=args.root_path,
         can_bus_root_path=args.canbus,

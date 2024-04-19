@@ -699,7 +699,7 @@ class VectorizedLocalMap(object):
 
         trans_x = self.canvas_size[1] / 2
         trans_y = self.canvas_size[0] / 2
-        line_ego = affinity.scale(line_ego, self.scale_x, self.scale_y, origin=(0, 0))
+        line_ego = affinity.scale(line_ego, self.scale_x, self.scale_y, origin=(0, 0))    # 从实际坐标转为bev的网格坐标
         line_ego = affinity.affine_transform(line_ego, [1.0, 0.0, 0.0, 1.0, trans_x, trans_y])
         # print(np.array(list(line_ego.coords), dtype=np.int32).shape)
         coords = np.array(list(line_ego.coords), dtype=np.int32)[:, :2]
@@ -1064,12 +1064,12 @@ class CustomNuScenesOfflineLocalMapDataset(CustomNuScenesDataset):
         self.fixed_num = fixed_ptsnum_per_line
         self.eval_use_same_gt_sample_num_flag = eval_use_same_gt_sample_num_flag
         self.aux_seg = aux_seg
-        self.vector_map = VectorizedLocalMap(canvas_size=bev_size,
-                                             patch_size=self.patch_size, 
+        self.vector_map = VectorizedLocalMap(canvas_size=bev_size,          # bev视图下网格数量
+                                             patch_size=self.patch_size,    # 为bev视图下对应的实际距离
                                              map_classes=self.MAPCLASSES, 
-                                             fixed_ptsnum_per_line=fixed_ptsnum_per_line,
-                                             padding_value=self.padding_value,
-                                             aux_seg=aux_seg)
+                                             fixed_ptsnum_per_line=fixed_ptsnum_per_line,   # 每个实例线的点个数为20
+                                             padding_value=self.padding_value,              # 填充数值为-1000
+                                             aux_seg=aux_seg)                # 在bev视图下和图像特征下的分割
         self.is_vis_on_test = False
         self.noise = noise
         self.noise_std = noise_std

@@ -10,6 +10,10 @@ from torch.utils.cpp_extension import (BuildExtension, CppExtension,
                                        CUDAExtension)
 
 
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
+
+
 def readme():
     with open('README.md', encoding='utf-8') as f:
         content = f.read()

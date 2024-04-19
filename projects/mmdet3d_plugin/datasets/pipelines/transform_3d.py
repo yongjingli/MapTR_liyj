@@ -372,7 +372,7 @@ class RandomScaleImageMultiViewImage(object):
         scale_factor[1, 1] *= rand_scale
         results['img'] = [mmcv.imresize(img, (x_size[idx], y_size[idx]), return_scale=False) for idx, img in
                           enumerate(results['img'])]
-        lidar2img = [scale_factor @ l2i for l2i in results['lidar2img']]
+        lidar2img = [scale_factor @ l2i for l2i in results['lidar2img']]    # l2i 左乘雷达坐标[X,Y,Z,1]后得到[u,v,z,1], 然后乘以scale_factor，相当于u,v分成乘以rand_scale
         img_aug_matrix = [scale_factor for _ in results['lidar2img']]
         results['lidar2img'] = lidar2img
         results['img_aug_matrix'] = img_aug_matrix

@@ -11,7 +11,7 @@ plugin_dir = 'projects/mmdet3d_plugin/'
 # point_cloud_range = [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
 point_cloud_range = [-15.0, -30.0,-10.0, 15.0, 30.0, 10.0]
 voxel_size = [0.15, 0.15, 20.0]
-dbound=[1.0, 35.0, 0.5]
+dbound=[1.0, 35.0, 0.5]   # 采用lss的方式构建bev特征，图像特征预测的深度为1到35，间隔为0.5
 
 grid_config = {
     'x': [-30.0, -30.0, 0.15], # useless
@@ -74,7 +74,7 @@ model = dict(
         type='ResNet',
         depth=50,
         num_stages=4,
-        out_indices=(3,),
+        out_indices=(3,),     # 只是输出最后一层的特征图
         frozen_stages=1,
         norm_cfg=dict(type='BN', requires_grad=False),
         norm_eval=True,
@@ -95,7 +95,7 @@ model = dict(
         num_vec_one2one=50,
         num_vec_one2many=300,
         k_one2many=6,
-        num_pts_per_vec=fixed_ptsnum_per_pred_line, # one bbox
+        num_pts_per_vec=fixed_ptsnum_per_pred_line,    # one bbox
         num_pts_per_gt_vec=fixed_ptsnum_per_gt_line,
         dir_interval=1,
         query_embed_type='instance_pts',
@@ -249,7 +249,9 @@ test_pipeline = [
 ]
 
 data = dict(
-    samples_per_gpu=4,
+    # samples_per_gpu=4,
+    # samples_per_gpu=2,
+    samples_per_gpu=1,
     workers_per_gpu=4, # TODO
     train=dict(
         type=dataset_type,
@@ -275,6 +277,7 @@ data = dict(
         type=dataset_type,
         data_root=data_root,
         ann_file=data_root + 'nuscenes_map_infos_temporal_val.pkl',
+        # ann_file=data_root + 'nuscenes_infos_temporal_val.pkl',
         map_ann_file=data_root + 'nuscenes_map_anns_val.json',
         pipeline=test_pipeline,  bev_size=(bev_h_, bev_w_),
         pc_range=point_cloud_range,
@@ -287,6 +290,7 @@ data = dict(
         type=dataset_type,
         data_root=data_root,
         ann_file=data_root + 'nuscenes_map_infos_temporal_val.pkl',
+        # ann_file=data_root + 'nuscenes_infos_temporal_val.pkl',
         map_ann_file=data_root + 'nuscenes_map_anns_val.json',
         pipeline=test_pipeline, 
         bev_size=(bev_h_, bev_w_),
@@ -318,8 +322,11 @@ lr_config = dict(
     warmup_iters=500,
     warmup_ratio=1.0 / 3,
     min_lr_ratio=1e-3)
-total_epochs = 24
-evaluation = dict(interval=2, pipeline=test_pipeline, metric='chamfer',
+# total_epochs = 24
+total_epochs = 500
+# evaluation = dict(interval=2, pipeline=test_pipeline, metric='chamfer',
+#                   save_best='NuscMap_chamfer/mAP', rule='greater')
+evaluation = dict(interval=50, pipeline=test_pipeline, metric='chamfer',
                   save_best='NuscMap_chamfer/mAP', rule='greater')
 # total_epochs = 50
 # evaluation = dict(interval=1, pipeline=test_pipeline)

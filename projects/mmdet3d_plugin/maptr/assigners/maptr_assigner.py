@@ -174,13 +174,13 @@ class MapTRAssigner(BaseAssigner):
 
         # 2. compute the weighted costs
         # classification and bboxcost.
-        cls_cost = self.cls_cost(cls_pred, gt_labels)
+        cls_cost = self.cls_cost(cls_pred, gt_labels)   # cls_pred:[50, 3], gt_labels:N  return:[50, N]
         # regression L1 cost
         
         normalized_gt_bboxes = normalize_2d_bbox(gt_bboxes, self.pc_range)
         # normalized_gt_bboxes = gt_bboxes
         # import pdb;pdb.set_trace()
-        reg_cost = self.reg_cost(bbox_pred[:, :4], normalized_gt_bboxes[:, :4])
+        reg_cost = self.reg_cost(bbox_pred[:, :4], normalized_gt_bboxes[:, :4])  # bbox_pred:[50, 4] normalized_gt_bboxes[N, 4], return:[50, N]
 
         _, num_orders, num_pts_per_gtline, num_coords = gt_pts.shape
         normalized_gt_pts = normalize_2d_pts(gt_pts, self.pc_range) if not self.z_cfg['gt_z_flag'] \
@@ -193,9 +193,9 @@ class MapTRAssigner(BaseAssigner):
         else:
             pts_pred_interpolated = pts_pred
         # num_q, num_pts, 2 <-> num_gt, num_pts, 2
-        pts_cost_ordered = self.pts_cost(pts_pred_interpolated, normalized_gt_pts)
+        pts_cost_ordered = self.pts_cost(pts_pred_interpolated, normalized_gt_pts)  # pts_pred_interpolated[50， 20， 2], normalized_gt_pts[8， 19， 20， 2]
         pts_cost_ordered = pts_cost_ordered.view(num_bboxes, num_gts, num_orders)
-        pts_cost, order_index = torch.min(pts_cost_ordered, 2)
+        pts_cost, order_index = torch.min(pts_cost_ordered, 2)    # 求出order里最小的一个 [50, 8]
         
         bboxes = denormalize_2d_bbox(bbox_pred, self.pc_range)
         iou_cost = self.iou_cost(bboxes, gt_bboxes)
@@ -209,9 +209,9 @@ class MapTRAssigner(BaseAssigner):
                               'to install scipy first.')
         matched_row_inds, matched_col_inds = linear_sum_assignment(cost)
         matched_row_inds = torch.from_numpy(matched_row_inds).to(
-            bbox_pred.device)
+            bbox_pred.device)   # [N]
         matched_col_inds = torch.from_numpy(matched_col_inds).to(
-            bbox_pred.device)
+            bbox_pred.device)   # [N]
 
         # 4. assign backgrounds and foregrounds
         # assign all indices to backgrounds first
@@ -219,6 +219,8 @@ class MapTRAssigner(BaseAssigner):
         # assign foregrounds based on matching results
         assigned_gt_inds[matched_row_inds] = matched_col_inds + 1
         assigned_labels[matched_row_inds] = gt_labels[matched_col_inds]
+        # num_gts为gt的数量 assigned_gt_inds为分配的gt-index，下标从0开始
+        # assigned_labels为分配的类别, order_index为预测的顺序的index
         return AssignResult(
             num_gts, assigned_gt_inds, None, labels=assigned_labels), order_index
 
